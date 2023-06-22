@@ -7,32 +7,42 @@ import com.espertech.esper.runtime.client.UpdateListener;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lsdi.cloudworker.DataTransferObjects.Event;
+import lsdi.cloudworker.DataTransferObjects.RuleRequestResponse;
+import lsdi.cloudworker.Services.MqttService;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
 public class EventListener implements UpdateListener {
     RestTemplate restTemplate = new RestTemplate();
-    private final String ruleUuid;
+    private final RuleRequestResponse rule;
     private final String webhookUrl;
 
     private final String consumerUrl = System.getenv("CLOUDCONSUMER_URL");
 
-    public EventListener(String ruleUuid, String webhookUrl) {
-        this.ruleUuid = ruleUuid;
+    private MqttService mosquittoService = MqttService.getInstance();
+
+    public EventListener(RuleRequestResponse rule, String webhookUrl) {
+        this.rule = rule;
         this.webhookUrl = webhookUrl;
     }
 
     @Override
     public void update(EventBean[] newData, EventBean[] oldEvents, EPStatement statement, EPRuntime runtime) {
-        ObjectMapper mapper = new ObjectMapper();
         try {
+            ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> event = mapper.readValue(mapper.writeValueAsString(newData[0].getUnderlying()), Map.class);
-            Event eventDto = new Event();
-            eventDto.setWebhookUrl(webhookUrl);
-            eventDto.setEvent(event);
-            //TODO enviroment variable cloudconsumer_url
-            restTemplate.postForObject(consumerUrl + "/event", eventDto, Map.class);
+
+            switch (rule.getTarget()) {
+                case "CLOUD" -> mosquittoService.publish("cdpo/CLOUD/event/" + rule.getOutputEventType(), mapper.writeValueAsBytes(event));
+                case "WEBHOOK" -> {
+                    Event eventDto = new Event();
+                    eventDto.setWebhookUrl(webhookUrl);
+                    eventDto.setEvent(event);
+                    //TODO enviroment variable cloudconsumer_url
+                    restTemplate.postForObject(consumerUrl + "/event", eventDto, Map.class);
+                }
+            }
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
