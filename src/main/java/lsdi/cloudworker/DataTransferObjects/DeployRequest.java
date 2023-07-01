@@ -11,6 +11,6 @@ public class DeployRequest {
     @Nullable
     @JsonProperty("webhook_url")
     public String webhookUrl;
-    @JsonProperty("cloud_rules")
+    @JsonProperty("rules")
     public List<RuleRequestResponse> rules;
 }

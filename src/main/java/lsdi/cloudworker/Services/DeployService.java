@@ -24,7 +24,7 @@ public class DeployService {
         for (RuleRequestResponse rule : deployRequest.getRules()) {
             new Thread(() -> {
                 EPStatement epStatement = esperService.getStatement(epDeployment.getDeploymentId(), rule.getName());
-                epStatement.addListener(new EventListener(rule.getEventType(), rule.getWebhookUrl()));
+                epStatement.addListener(new EventListener(rule));
 
                 //TODO send deploy response to fog node
             }).start();

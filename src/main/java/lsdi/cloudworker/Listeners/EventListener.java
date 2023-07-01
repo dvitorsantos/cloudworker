@@ -16,15 +16,13 @@ import java.util.Map;
 public class EventListener implements UpdateListener {
     RestTemplate restTemplate = new RestTemplate();
     private final RuleRequestResponse rule;
-    private final String webhookUrl;
 
     private final String consumerUrl = System.getenv("CLOUDCONSUMER_URL");
 
     private MqttService mosquittoService = MqttService.getInstance();
 
-    public EventListener(RuleRequestResponse rule, String webhookUrl) {
+    public EventListener(RuleRequestResponse rule) {
         this.rule = rule;
-        this.webhookUrl = webhookUrl;
     }
 
     @Override
@@ -37,7 +35,7 @@ public class EventListener implements UpdateListener {
                 case "CLOUD" -> mosquittoService.publish("cdpo/CLOUD/event/" + rule.getOutputEventType(), mapper.writeValueAsBytes(event));
                 case "WEBHOOK" -> {
                     Event eventDto = new Event();
-                    eventDto.setWebhookUrl(webhookUrl);
+                    eventDto.setWebhookUrl(rule.getWebhookUrl());
                     eventDto.setEvent(event);
                     //TODO enviroment variable cloudconsumer_url
                     restTemplate.postForObject(consumerUrl + "/event", eventDto, Map.class);
